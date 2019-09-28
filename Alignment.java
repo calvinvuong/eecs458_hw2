@@ -57,7 +57,7 @@ public class Alignment {
 	printMatrix(scores);
 	printMatrix(backtrack);
 	System.out.println("Optimal score: " + scores[m][n]);
-	//System.out.println("Number of optimal alignments: " + countAlignments());
+	System.out.println("Number of optimal alignments: " + countAlignments(backtrack, m, n));
 	printAlignments(s1, s2, backtrack, m, n);
 	
 	return scores[m][n];
@@ -135,7 +135,28 @@ public class Alignment {
 	return newAlignments;
     }
 
-    public static void countAlignments() {
+    // counts the number of optimal alignments
+    // recursively defined
+    public static int countAlignments(int[][] backtrack, int i, int j) {
+	// base case
+	if ( backtrack[i][j] == 0 ) // end of sequence
+	    return 1;
+	
+	int numAlignments = 0;
+	// if (i, j) points diagonal
+	if ( backtrack[i][j] % 2 == 1 )
+	    // count alignment sequences in the diagonal direction
+	    numAlignments += countAlignments(backtrack, i-1, j-1);
+	// if (i, j) points left
+	if ( backtrack[i][j] >= 2 && backtrack[i][j] / 2 != 2 )
+	    // count alignment sequences in the left directio
+	    numAlignments += countAlignments(backtrack, i, j-1);
+	// if (i, j) points up
+	if ( backtrack[i][j] >= 4 )
+	    // count alignment sequences in the up direction
+	    numAlignments += countAlignments(backtrack, i-1, j);
+
+	return numAlignments;
     }
     
     // Prints the input matrix
@@ -162,7 +183,7 @@ public class Alignment {
    
     public static void main(String[] args) {
 	globalAlignment("ATTTGG", "ATCG", 1, -1, -1);
-	globalAlignment("TTCTTGTTAC", "GTCGGGATAC", 1, -1, -1);
+	globalAlignment("GATTACA", "GCATGCT", 1, -1, -1);
 	/*
 	System.out.println( max(5, 5, 5) );
 	System.out.println( max(3, 5, 5) );
