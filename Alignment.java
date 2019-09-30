@@ -5,8 +5,108 @@ import java.util.List;
 import java.util.ArrayList;
 
 public class Alignment {
+
+    // Implements the Smith-Waterman algorithm to perform local alignment
+    // Takes as input two Strings s1, s2 representing ATCG sequences and the scores for match, mismatch, and indel
+    public static int localAlignment(String s1, String s2, int match, int mismatch, int indel) {
+	// length of input strings
+	int m = s1.length();
+	int n = s2.length();
+
+	int[][] scores = new int[m+1][n+1];    // score solution matrix
+	int[][] backtrack = new int[m+1][n+1]; // backtrack matrix
+	// uses 3 bit binary (represented as an int) to encode directions
+	// up, left, diagonal in that order (e.g. 101 corresponds to diagonal and up)
+	// -1 corresponds to stop
+	
+	// initialize score matrix (same as Needleman-Wunsch)
+	// initialize score matrix
+	for ( int i = 0; i <= m; i++ ) // initialize F(i, 0)
+	    scores[i][0] = i * indel;
+	for ( int j = 0; j <= n; j++ ) // initialize F(0, j)
+	    scores[0][j] = j * indel;
+
+	// initialize backtrack matrix (different from Needleman-Wunsch)
+	backtrack[0][0] = 0;
+	for ( int i = 1; i <= m; i++ ) // initialize F(i, 0)
+	    backtrack[i][0] = 0;
+	for ( int j = 1; j <= n; j++ ) // initialize F(0, j)
+	    backtrack[0][j] = 0;
+
+	// fill in subproblem matrices
+	for ( int i = 1; i <= m; i++ ) {
+	    for ( int j = 1; j <= n; j++ ) {
+		int sub = scores[i-1][j-1] + sub(s1.charAt(i-1), s2.charAt(j-1), match, mismatch); // opt. subproblem score for substitution
+		int gS2 = scores[i-1][j] + indel; // opt. subproblem score for gap in s2
+		int gS1 = scores[i][j-1] + indel; // opt. subproblem score for gap in s1
+		
+		// fill in solution
+		int best = max(sub, gS2, gS1);
+		// "restart" alignment if best of subproblems gives negative score 
+		if ( best < 0 ) 
+		    scores[i][j] = 0;
+		else 
+		    scores[i][j] = best;
+
+		// fill in backtrack data
+		if ( scores[i][j] == sub ) // subs. gave you best opt. subsoln.
+		    backtrack[i][j] += 1; // point diagonal
+		if ( scores[i][j] == gS2 ) // inserting gap in s2 gave best opt. subsoln.
+		    backtrack[i][j] += 4; // point up
+		if ( scores[i][j] == gS1 ) // inserting gap in s1 gave best opt. subsoln.
+		    backtrack[i][j] += 2; // point left
+		/* if ( scores[i][j] == 0 ) // restart alignment
+		   backtrack[i][j] += 8; */
+	    }
+	}
+
+	// find optimal score in matrix
+	int maxScore = scores[0][0];
+	// the indices (i, j) of the optimal solutions (there can be more than one)
+	// List<int[]> optIndices = new ArrayList<int[]>();
+	for ( int i = 0; i <= m; i++ ) {
+	    for ( int j = 0; j <= n; j++ ) {
+		if ( scores[i][j] > maxScore ) 
+		    maxScore = scores[i][j];
+	    }
+	}
+
+	// find the indices where the max scores are
+	List<int[]> maxScoreIndices = new ArrayList<int[]>();
+	for ( int i = 0; i <= m; i++ ) {
+	    for ( int j = 0; j <= n; j++ ) {
+		if ( scores[i][j] == maxScore )
+		    maxScoreIndices.add(new int[] {i, j});
+	    }
+	}
+	
+	// count the number of optimal alignments
+	int numOptimalAlignments = 0;
+	for ( int k = 0; k < maxScoreIndices.size(); k++ ) {
+	    int i = maxScoreIndices.get(k)[0];
+	    int j = maxScoreIndices.get(k)[1];
+	    numOptimalAlignments += countAlignments(scores, backtrack, i, j);
+	}
+	
+	printMatrix(scores);
+	printMatrix(backtrack);
+	System.out.println("Optimal score: " + maxScore);
+	System.out.println("Number of optimal alignments: " + numOptimalAlignments);
+
+	// print all the optimal alignments
+	for ( int k = 0; k < maxScoreIndices.size(); k++ ) {
+	    int i = maxScoreIndices.get(k)[0];
+	    int j = maxScoreIndices.get(k)[1];
+	    printAlignments(s1, s2, scores, backtrack, i, j);
+	}
+
+	return maxScore;
+    }
+
+    
     // Implements the Needleman-Wunsch algorithm to perform global alignment
-    // Takes as input to Strings s1, s2 representing ATCG sequences and the scores for match, mismatch, and indel
+    // Takes as input two Strings s1, s2 representing ATCG sequences and the scores for match, mismatch, and indel
+    // Returns the optimal alignment score
     public static int globalAlignment(String s1, String s2, int match, int mismatch, int indel) {
 	// length of input strings
 	int m = s1.length();
@@ -57,8 +157,8 @@ public class Alignment {
 	printMatrix(scores);
 	printMatrix(backtrack);
 	System.out.println("Optimal score: " + scores[m][n]);
-	System.out.println("Number of optimal alignments: " + countAlignments(backtrack, m, n));
-	printAlignments(s1, s2, backtrack, m, n);
+	System.out.println("Number of optimal alignments: " + countAlignments(scores, backtrack, m, n));
+	printAlignments(s1, s2, scores, backtrack, m, n);
 	
 	return scores[m][n];
     }
@@ -73,9 +173,9 @@ public class Alignment {
 	    return mismatch;
     }
 
-    public static void printAlignments(String s1, String s2, int[][] backtrack, int i, int j) {
+    public static void printAlignments(String s1, String s2, int[][] scores, int[][] backtrack, int i, int j) {
 	// all alignments, stored in a list of String arrays
-	List<String[]> alignments = getAlignments(s1, s2, backtrack, i, j);
+	List<String[]> alignments = getAlignments(s1, s2, scores, backtrack, i, j);
 	for ( int k = 0; k < alignments.size(); k++ ) {
 	    System.out.println(alignments.get(k)[0]);
 	    System.out.println(alignments.get(k)[1]);
@@ -88,8 +188,8 @@ public class Alignment {
     // Also takes a starting index to backtrack from
     // Prints out all the paths to the optimal solution
     // Recursively defined
-    public static List<String[]> getAlignments(String s1, String s2, int[][] backtrack, int i, int j) {
-	if ( i == 0 & j == 0 ) {
+    public static List<String[]> getAlignments(String s1, String s2, int[][] scores, int[][] backtrack, int i, int j) {
+	if ( i == 0 & j == 0 ) { // base case
 	    List<String[]> newList = new ArrayList<String[]>();
 	    newList.add(new String[] {"", ""});
 	    return newList;
@@ -99,8 +199,8 @@ public class Alignment {
 	// if (i, j) points diagonal
 	if ( backtrack[i][j] %  2 == 1 ) {
 	    // get all the optimal alignment sequences so far to index (i-1, j-1)
-	    List<String[]> setOfAlignments = getAlignments(s1, s2, backtrack, i-1, j-1);
-	    for ( int k = 0; k < setOfAlignments.size(); k++ ) { // for all alignments in alignPrefix
+	    List<String[]> setOfAlignments = getAlignments(s1, s2, scores, backtrack, i-1, j-1);
+	    for ( int k = 0; k < setOfAlignments.size(); k++ ) { // for all alignments in setOfAlignments
 		String[] alignment = setOfAlignments.get(k);
 		alignment[0] = alignment[0] + s1.charAt(i-1);
 		alignment[1] = alignment[1] + s2.charAt(j-1);
@@ -111,7 +211,7 @@ public class Alignment {
 	// if (i, j) points left
 	if ( backtrack[i][j] >= 2 && backtrack[i][j] / 2 != 2 ) {
 	    // get all the optimal alignment sequences so far to index (i, j-1)
-	    List<String[]> setOfAlignments = getAlignments(s1, s2, backtrack, i, j-1);
+	    List<String[]> setOfAlignments = getAlignments(s1, s2, scores, backtrack, i, j-1);
 	    for ( int k = 0; k < setOfAlignments.size(); k++ ) {
 		String[] alignment = setOfAlignments.get(k);
 		alignment[0] = alignment[0] + "-";
@@ -123,7 +223,7 @@ public class Alignment {
 	// if ( i, j) points up
 	if ( backtrack[i][j] >= 4 ) {
 	    // get all the optimal alignment sequences so far to index (i-1, j)
-	    List<String[]> setOfAlignments = getAlignments(s1, s2, backtrack, i-1, j);
+	    List<String[]> setOfAlignments = getAlignments(s1, s2, scores, backtrack, i-1, j);
 	    for ( int k = 0; k < setOfAlignments.size(); k++ ) {
 		String[] alignment = setOfAlignments.get(k);
 		alignment[0] = alignment[0] + s1.charAt(i-1);
@@ -132,12 +232,17 @@ public class Alignment {
 	    }
 	}
 
+	// if (i, j) can also be a new alignment
+	if ( scores[i][j] == 0 ) {
+	    newAlignments.add(new String[] {"", ""});
+	}
+
 	return newAlignments;
     }
 
     // counts the number of optimal alignments
     // recursively defined
-    public static int countAlignments(int[][] backtrack, int i, int j) {
+    public static int countAlignments(int[][] scores, int[][] backtrack, int i, int j) {
 	// base case
 	if ( backtrack[i][j] == 0 ) // end of sequence
 	    return 1;
@@ -146,15 +251,19 @@ public class Alignment {
 	// if (i, j) points diagonal
 	if ( backtrack[i][j] % 2 == 1 )
 	    // count alignment sequences in the diagonal direction
-	    numAlignments += countAlignments(backtrack, i-1, j-1);
+	    numAlignments += countAlignments(scores, backtrack, i-1, j-1);
 	// if (i, j) points left
 	if ( backtrack[i][j] >= 2 && backtrack[i][j] / 2 != 2 )
 	    // count alignment sequences in the left directio
-	    numAlignments += countAlignments(backtrack, i, j-1);
+	    numAlignments += countAlignments(scores, backtrack, i, j-1);
 	// if (i, j) points up
 	if ( backtrack[i][j] >= 4 )
 	    // count alignment sequences in the up direction
-	    numAlignments += countAlignments(backtrack, i-1, j);
+	    numAlignments += countAlignments(scores, backtrack, i-1, j);
+
+	// if (i, j) can also be the start of a new sequence
+	if ( scores[i][j] == 0 )
+	    numAlignments += 1;
 
 	return numAlignments;
     }
@@ -182,8 +291,12 @@ public class Alignment {
 
    
     public static void main(String[] args) {
-	globalAlignment("ATTTGG", "ATCG", 1, -1, -1);
+	//globalAlignment("ATTTGG", "ATCG", 1, -1, -1);
 	globalAlignment("GATTACA", "GCATGCT", 1, -1, -1);
+	//localAlignment("ATTTGG", "ATCG", 1, -1, -1);
+	localAlignment("GATTACA", "GCATGCT", 1, -1, -1);
+	localAlignment("ACTAGG", "AGTAGG", 1, -1, -1);
+	localAlignment("GGCACGTTCACC", "TACAGC", 1, -1, -1);
 	/*
 	System.out.println( max(5, 5, 5) );
 	System.out.println( max(3, 5, 5) );
