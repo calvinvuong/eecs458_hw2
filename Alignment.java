@@ -3,6 +3,8 @@
 
 import java.util.List;
 import java.util.ArrayList;
+import java.io.File;
+import java.util.Scanner;
 
 public class Alignment {
 
@@ -85,7 +87,7 @@ public class Alignment {
 	for ( int k = 0; k < maxScoreIndices.size(); k++ ) {
 	    int i = maxScoreIndices.get(k)[0];
 	    int j = maxScoreIndices.get(k)[1];
-	    numOptimalAlignments += countAlignments(scores, backtrack, i, j);
+	    numOptimalAlignments += countAlignments(scores, backtrack, i, j, true);
 	}
 	
 	printMatrix(scores);
@@ -97,7 +99,7 @@ public class Alignment {
 	for ( int k = 0; k < maxScoreIndices.size(); k++ ) {
 	    int i = maxScoreIndices.get(k)[0];
 	    int j = maxScoreIndices.get(k)[1];
-	    printAlignments(s1, s2, scores, backtrack, i, j);
+	    printAlignments(s1, s2, scores, backtrack, i, j, true);
 	}
 
 	return maxScore;
@@ -157,8 +159,8 @@ public class Alignment {
 	printMatrix(scores);
 	printMatrix(backtrack);
 	System.out.println("Optimal score: " + scores[m][n]);
-	System.out.println("Number of optimal alignments: " + countAlignments(scores, backtrack, m, n));
-	printAlignments(s1, s2, scores, backtrack, m, n);
+	System.out.println("Number of optimal alignments: " + countAlignments(scores, backtrack, m, n, false));
+	printAlignments(s1, s2, scores, backtrack, m, n, false);
 	
 	return scores[m][n];
     }
@@ -173,9 +175,9 @@ public class Alignment {
 	    return mismatch;
     }
 
-    public static void printAlignments(String s1, String s2, int[][] scores, int[][] backtrack, int i, int j) {
+    public static void printAlignments(String s1, String s2, int[][] scores, int[][] backtrack, int i, int j, boolean local) {
 	// all alignments, stored in a list of String arrays
-	List<String[]> alignments = getAlignments(s1, s2, scores, backtrack, i, j);
+	List<String[]> alignments = getAlignments(s1, s2, scores, backtrack, i, j, local);
 	for ( int k = 0; k < alignments.size(); k++ ) {
 	    System.out.println(alignments.get(k)[0]);
 	    System.out.println(alignments.get(k)[1]);
@@ -186,9 +188,10 @@ public class Alignment {
 
     // Takes the sequence Strings and matrix representing backtracking data
     // Also takes a starting index to backtrack from
+    // Also takes a flag that indicates whether or not it is getting a global or local alignment
     // Prints out all the paths to the optimal solution
     // Recursively defined
-    public static List<String[]> getAlignments(String s1, String s2, int[][] scores, int[][] backtrack, int i, int j) {
+    public static List<String[]> getAlignments(String s1, String s2, int[][] scores, int[][] backtrack, int i, int j, boolean local) {
 	if ( i == 0 & j == 0 ) { // base case
 	    List<String[]> newList = new ArrayList<String[]>();
 	    newList.add(new String[] {"", ""});
@@ -199,7 +202,7 @@ public class Alignment {
 	// if (i, j) points diagonal
 	if ( backtrack[i][j] %  2 == 1 ) {
 	    // get all the optimal alignment sequences so far to index (i-1, j-1)
-	    List<String[]> setOfAlignments = getAlignments(s1, s2, scores, backtrack, i-1, j-1);
+	    List<String[]> setOfAlignments = getAlignments(s1, s2, scores, backtrack, i-1, j-1, local);
 	    for ( int k = 0; k < setOfAlignments.size(); k++ ) { // for all alignments in setOfAlignments
 		String[] alignment = setOfAlignments.get(k);
 		alignment[0] = alignment[0] + s1.charAt(i-1);
@@ -211,7 +214,7 @@ public class Alignment {
 	// if (i, j) points left
 	if ( backtrack[i][j] >= 2 && backtrack[i][j] / 2 != 2 ) {
 	    // get all the optimal alignment sequences so far to index (i, j-1)
-	    List<String[]> setOfAlignments = getAlignments(s1, s2, scores, backtrack, i, j-1);
+	    List<String[]> setOfAlignments = getAlignments(s1, s2, scores, backtrack, i, j-1, local);
 	    for ( int k = 0; k < setOfAlignments.size(); k++ ) {
 		String[] alignment = setOfAlignments.get(k);
 		alignment[0] = alignment[0] + "-";
@@ -223,7 +226,7 @@ public class Alignment {
 	// if ( i, j) points up
 	if ( backtrack[i][j] >= 4 ) {
 	    // get all the optimal alignment sequences so far to index (i-1, j)
-	    List<String[]> setOfAlignments = getAlignments(s1, s2, scores, backtrack, i-1, j);
+	    List<String[]> setOfAlignments = getAlignments(s1, s2, scores, backtrack, i-1, j, local);
 	    for ( int k = 0; k < setOfAlignments.size(); k++ ) {
 		String[] alignment = setOfAlignments.get(k);
 		alignment[0] = alignment[0] + s1.charAt(i-1);
@@ -233,16 +236,17 @@ public class Alignment {
 	}
 
 	// if (i, j) can also be a new alignment
-	if ( scores[i][j] == 0 ) {
+	if ( local && scores[i][j] == 0 ) {
 	    newAlignments.add(new String[] {"", ""});
-	}
+	} 
 
 	return newAlignments;
     }
 
-    // counts the number of optimal alignments
+    // Counts the number of optimal alignments
+    // Also takes a flag that indicates whether or not it is getting a global or local alignment
     // recursively defined
-    public static int countAlignments(int[][] scores, int[][] backtrack, int i, int j) {
+    public static int countAlignments(int[][] scores, int[][] backtrack, int i, int j, boolean local) {
 	// base case
 	if ( backtrack[i][j] == 0 ) // end of sequence
 	    return 1;
@@ -251,18 +255,18 @@ public class Alignment {
 	// if (i, j) points diagonal
 	if ( backtrack[i][j] % 2 == 1 )
 	    // count alignment sequences in the diagonal direction
-	    numAlignments += countAlignments(scores, backtrack, i-1, j-1);
+	    numAlignments += countAlignments(scores, backtrack, i-1, j-1, local);
 	// if (i, j) points left
 	if ( backtrack[i][j] >= 2 && backtrack[i][j] / 2 != 2 )
 	    // count alignment sequences in the left directio
-	    numAlignments += countAlignments(scores, backtrack, i, j-1);
+	    numAlignments += countAlignments(scores, backtrack, i, j-1, local);
 	// if (i, j) points up
 	if ( backtrack[i][j] >= 4 )
 	    // count alignment sequences in the up direction
-	    numAlignments += countAlignments(scores, backtrack, i-1, j);
+	    numAlignments += countAlignments(scores, backtrack, i-1, j, local);
 
 	// if (i, j) can also be the start of a new sequence
-	if ( scores[i][j] == 0 )
+	if ( local && scores[i][j] == 0 )
 	    numAlignments += 1;
 
 	return numAlignments;
@@ -289,23 +293,65 @@ public class Alignment {
 	    return z;
     }
 
-   
-    public static void main(String[] args) {
+
+    // Read commands from an input file
+    public static void main(String[] args) throws Exception {
+	boolean local = false; // true if input specifies local alignment
+	int match = 0;
+	int mismatch = 0;
+	int indel = 0;
+	String s1 = "";
+	String s2 = "";
+
+	if ( args.length > 0 ) {
+	    File commands = new File(args[0]);
+	    Scanner scan = new Scanner(commands);
+	    int lineNum = 1;
+	    // read commands from file line by line
+	    while ( scan.hasNextLine() ) {
+		String line = scan.nextLine();
+		if ( lineNum == 1 && line.toLowerCase().startsWith("g") )
+		    local = false;
+		else if ( lineNum == 1 && line.toLowerCase().startsWith("l") )
+		    local = true;
+
+		else if ( lineNum == 2 ) {
+		    String[] penalties = line.split(", | |,");
+		    match = Integer.parseInt(penalties[0]);
+		    mismatch = Integer.parseInt(penalties[1]);
+		    indel = Integer.parseInt(penalties[2]);
+		}
+
+		else if ( lineNum == 3 ) 
+		    s1 = line;
+
+		else if ( lineNum == 4 )
+		    s2 = line;
+
+		lineNum += 1;
+	    }
+
+	    // perform alignment based on input file params
+	    if ( local ) 
+		localAlignment(s1, s2, match, mismatch, indel);
+	    else
+		globalAlignment(s1, s2, match, mismatch, indel);
+	}
+	
+	else {
+	
+	    localAlignment("ATTCG", "ATCG", 1, -1, -1);
+	    
+	/*
 	//globalAlignment("ATTTGG", "ATCG", 1, -1, -1);
 	globalAlignment("GATTACA", "GCATGCT", 1, -1, -1);
 	//localAlignment("ATTTGG", "ATCG", 1, -1, -1);
 	localAlignment("GATTACA", "GCATGCT", 1, -1, -1);
 	localAlignment("ACTAGG", "AGTAGG", 1, -1, -1);
 	localAlignment("GGCACGTTCACC", "TACAGC", 1, -1, -1);
-	/*
-	System.out.println( max(5, 5, 5) );
-	System.out.println( max(3, 5, 5) );
-	System.out.println( max(5, 3, 5) );
-	System.out.println( max(5, 3, 3) );
-	System.out.println( max(4, 6, 8) );
-	System.out.println( max(7, 7, 3) );
-	System.out.println( max(7, 10, 5) );
 	*/
+	}
+	
     }
 
 }
