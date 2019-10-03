@@ -19,7 +19,6 @@ public class Alignment {
 	int[][] backtrack = new int[m+1][n+1]; // backtrack matrix
 	// uses 3 bit binary (represented as an int) to encode directions
 	// up, left, diagonal in that order (e.g. 101 corresponds to diagonal and up)
-	// -1 corresponds to stop
 	
 	// initialize score matrix (same as Needleman-Wunsch)
 	// initialize score matrix
@@ -57,8 +56,6 @@ public class Alignment {
 		    backtrack[i][j] += 4; // point up
 		if ( scores[i][j] == gS1 ) // inserting gap in s1 gave best opt. subsoln.
 		    backtrack[i][j] += 2; // point left
-		/* if ( scores[i][j] == 0 ) // restart alignment
-		   backtrack[i][j] += 8; */
 	    }
 	}
 
