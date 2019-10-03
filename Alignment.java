@@ -87,8 +87,8 @@ public class Alignment {
 	    numOptimalAlignments += countAlignments(scores, backtrack, i, j, true);
 	}
 	
-	printMatrix(scores);
-	printMatrix(backtrack);
+	//printMatrix(scores);
+	//printMatrix(backtrack);
 	System.out.println("Optimal score: " + maxScore);
 	System.out.println("Number of optimal alignments: " + numOptimalAlignments);
 
@@ -153,8 +153,8 @@ public class Alignment {
 	}
 
 	
-	printMatrix(scores);
-	printMatrix(backtrack);
+	//printMatrix(scores);
+	//printMatrix(backtrack);
 	System.out.println("Optimal score: " + scores[m][n]);
 	System.out.println("Number of optimal alignments: " + countAlignments(scores, backtrack, m, n, false));
 	printAlignments(s1, s2, scores, backtrack, m, n, false);
